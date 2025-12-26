@@ -1,0 +1,11 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+libris.db
+
+# React Native
+mobile/node_modules/
+mobile/.expo/
+mobile/package-lock.json
+mobile/.git/
