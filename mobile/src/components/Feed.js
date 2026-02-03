@@ -1,107 +1,105 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, FlatList, ActivityIndicator, Text, Platform } from 'react-native';
-import axios from 'axios';
+import React, { useEffect, useCallback } from 'react';
+import {
+  StyleSheet,
+  View,
+  FlatList,
+  ActivityIndicator,
+  Text,
+  RefreshControl,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import useFeedStore from '../store/feedStore';
 import FeedItem from './FeedItem';
-import Constants from 'expo-constants';
-
-// Configure API URL based on environment
-const getApiUrl = () => {
-    // If running on iOS Simulator, localhost (127.0.0.1) refers to the host machine.
-    if (Platform.OS === 'ios' && !Constants.isDevice) {
-        return 'http://127.0.0.1:8000/feed';
-    }
-
-    // If running on Android Emulator, localhost (10.0.2.2) refers to the host machine.
-    if (Platform.OS === 'android' && !Constants.isDevice) {
-        return 'http://10.0.2.2:8000/feed';
-    }
-
-    // If running on a physical device, we try to detect the LAN IP of the bundler.
-    const debuggerHost = Constants.expoConfig?.hostUri;
-    const localhost = debuggerHost ? debuggerHost.split(':')[0] : 'localhost';
-
-    // Fallback if we can't detect host (e.g. web or simple simulator run)
-    if (!debuggerHost) {
-        return 'http://localhost:8000/feed';
-    }
-
-    return `http://${localhost}:8000/feed`;
-};
-
-const API_URL = getApiUrl();
 
 export default function Feed() {
-    const [data, setData] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+  const navigation = useNavigation();
+  const { items, loading, error, hasMore, fetchFeed, refresh } = useFeedStore();
 
-    const fetchMore = async () => {
-        if (loading) return;
+  useEffect(() => {
+    fetchFeed();
+  }, []);
 
-        setLoading(true);
-        try {
-            console.log('Fetching feed from:', API_URL);
-            const response = await axios.get(API_URL);
-            // Append new items to the list
-            // Note: In a real app, we'd ensure unique IDs or handle dupes
-            setData(prevData => [...prevData, ...response.data]);
-        } catch (err) {
-            console.error('Fetch error:', err);
-            setError('Failed to load feed');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchMore();
-    }, []);
-
-    if (data.length === 0 && loading) {
-        return (
-            <View style={styles.center}>
-                <ActivityIndicator size="large" color="#000" />
-            </View>
-        );
+  const handleEndReached = useCallback(() => {
+    if (!loading && hasMore) {
+      fetchFeed();
     }
+  }, [loading, hasMore, fetchFeed]);
 
-    if (data.length === 0 && error) {
-        return (
-            <View style={styles.center}>
-                <Text style={{ color: 'white', marginBottom: 10 }}>Error: {error}</Text>
-                <Text style={{ color: 'gray', textAlign: 'center', marginBottom: 20 }}>
-                    Attempted URL: {API_URL}
-                </Text>
-                <Text onPress={fetchMore} style={{ color: '#007AFF', fontSize: 16 }}>Retry</Text>
-            </View>
-        );
-    }
-
+  const renderFooter = () => {
+    if (!loading) return null;
     return (
-        <View style={styles.container}>
-            <FlatList
-                data={data}
-                renderItem={({ item, index }) => <FeedItem item={item} />}
-                keyExtractor={(item, index) => index.toString()} // Using index as key for simplicity in MVP
-                pagingEnabled
-                showsVerticalScrollIndicator={false}
-                onEndReached={fetchMore}
-                onEndReachedThreshold={2} // Fetch more when 2 screens away from end
-                decelerationRate="fast"
-                snapToAlignment="start"
-            />
-        </View>
+      <View style={styles.footer}>
+        <ActivityIndicator size="small" color="#666" />
+      </View>
     );
+  };
+
+  // Initial loading state
+  if (items.length === 0 && loading) {
+    return (
+      <View style={styles.center} testID="loading-indicator">
+        <ActivityIndicator size="large" color="#000" />
+      </View>
+    );
+  }
+
+  // Error state with no items
+  if (items.length === 0 && error) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.errorText}>Error: {error}</Text>
+        <Text onPress={refresh} style={styles.retryText}>
+          Retry
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={items}
+        renderItem={({ item }) => <FeedItem item={item} navigation={navigation} />}
+        keyExtractor={(item) => item.id.toString()}
+        pagingEnabled
+        showsVerticalScrollIndicator={false}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={2}
+        decelerationRate="fast"
+        snapToAlignment="start"
+        ListFooterComponent={renderFooter}
+        refreshControl={
+          <RefreshControl
+            refreshing={false}
+            onRefresh={refresh}
+            tintColor="#666"
+          />
+        }
+      />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#000', // Dark background behind the pages
-    },
-    center: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
+  container: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
+  },
+  errorText: {
+    color: 'white',
+    marginBottom: 10,
+  },
+  retryText: {
+    color: '#007AFF',
+    fontSize: 16,
+  },
+  footer: {
+    paddingVertical: 20,
+  },
 });

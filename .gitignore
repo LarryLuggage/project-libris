@@ -2,10 +2,46 @@
 venv/
 __pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database
 libris.db
+*.db
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Alembic
+alembic/versions/*.pyc
 
 # React Native
 mobile/node_modules/
 mobile/.expo/
 mobile/package-lock.json
 mobile/.git/
+mobile/dist/
+mobile/web-build/
+
+# Logs
+*.log
+logs/

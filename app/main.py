@@ -1,69 +1,45 @@
-from typing import List
-from fastapi import FastAPI, Depends
-from sqlalchemy.orm import Session
-from sqlalchemy import func
-from pydantic import BaseModel
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from app.database import engine, get_db
-from app.models import Base, Page, Book
+from app.database import engine
+from app.logging_config import setup_logging
+from app.models import Base
+from app.routers import books, feed, health, interactions
+
+logger = setup_logging(__name__)
+
+
+def create_app() -> FastAPI:
+    """Application factory."""
+    application = FastAPI(
+        title="Project LIBRIS",
+        description="TikTok for Books - Serving atomic literature",
+        version="1.0.0",
+    )
+
+    # CORS middleware
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # API v1 routes
+    application.include_router(feed.router, prefix="/api/v1")
+    application.include_router(books.router, prefix="/api/v1")
+    application.include_router(health.router, prefix="/api/v1")
+    application.include_router(interactions.router, prefix="/api/v1")
+
+    # Legacy routes for backward compatibility (deprecated)
+    application.include_router(feed.router, prefix="", deprecated=True)
+
+    logger.info("LIBRIS API initialized")
+    return application
+
 
 # Create tables on startup
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Project LIBRIS")
-
-from fastapi.middleware.cors import CORSMiddleware
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-class FeedItem(BaseModel):
-    title: str
-    author: str
-    page_number: int
-    content_text: str
-    cover_url: str | None = None
-
-    class Config:
-        from_attributes = True
-
-@app.get("/feed", response_model=List[FeedItem])
-def get_feed(db: Session = Depends(get_db)):
-    """
-    Returns 10 random pages with a vibe_score > 0.7.
-    """
-    # Query for pages with vibe_score > 0.7
-    # Join with Book to ensure we can access book details
-    pages = (
-        db.query(
-            Page.content_text,
-            Page.page_number,
-            Book.title,
-            Book.author,
-            Book.cover_url
-        )
-        .join(Book)
-        .filter(Page.vibe_score > 0.7)
-        .order_by(func.random())
-        .limit(10)
-        .all()
-    )
-
-    # Convert to Pydantic models (or just return the dicts if the shape matches)
-    # Since we selected specific fields, 'pages' will be a list of Row objects (named tuples-like)
-    # We can map them to the Pydantic model.
-    return [
-        FeedItem(
-            title=row.title,
-            author=row.author,
-            page_number=row.page_number,
-            content_text=row.content_text,
-            cover_url=row.cover_url
-        )
-        for row in pages
-    ]
+app = create_app()

@@ -1,21 +1,22 @@
-import os
+from typing import Generator
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
-# Default to creating a local postgres database named 'libris'
-# Use 'postgresql+psycopg2://...' for the driver
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://localhost/libris")
+from app.config import get_settings
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://localhost/libris")
+settings = get_settings()
 
 connect_args = {}
-if DATABASE_URL.startswith("sqlite"):
+if settings.database_url.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 
-engine = create_engine(DATABASE_URL, connect_args=connect_args)
+engine = create_engine(settings.database_url, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-def get_db():
+
+def get_db() -> Generator[Session, None, None]:
+    """Dependency that provides a database session."""
     db = SessionLocal()
     try:
         yield db
