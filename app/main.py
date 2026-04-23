@@ -1,9 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-from app.database import engine
+from app.config import get_settings
 from app.logging_config import setup_logging
-from app.models import Base
 from app.routers import books, feed, health, interactions
 
 logger = setup_logging(__name__)
@@ -17,14 +18,32 @@ def create_app() -> FastAPI:
         version="1.0.0",
     )
 
+    settings = get_settings()
+
     # CORS middleware
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
+        allow_origins=settings.cors_origins,
+        allow_credentials=settings.cors_origins != ["*"],
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Global exception handlers
+    @application.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        return JSONResponse(
+            status_code=422,
+            content={"detail": "Invalid request parameters", "error_code": "VALIDATION_ERROR"},
+        )
+
+    @application.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception):
+        logger.error(f"Unhandled exception on {request.url}: {exc}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error", "error_code": "INTERNAL_ERROR"},
+        )
 
     # API v1 routes
     application.include_router(feed.router, prefix="/api/v1")
@@ -38,8 +57,5 @@ def create_app() -> FastAPI:
     logger.info("LIBRIS API initialized")
     return application
 
-
-# Create tables on startup
-Base.metadata.create_all(bind=engine)
 
 app = create_app()

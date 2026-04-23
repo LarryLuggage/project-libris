@@ -5,15 +5,24 @@ import * as Application from 'expo-application';
 import axios from 'axios';
 import { API_CONFIG } from '../config/api';
 
+const FALLBACK_DEVICE_ID_KEY = 'libris-fallback-device-id';
+
 const getDeviceId = async () => {
   try {
     const id = await Application.getInstallationIdAsync();
-    return id;
+    if (id) return id;
   } catch (error) {
-    // Fallback to a random ID if installation ID fails
-    console.warn('Could not get installation ID, using fallback');
-    return `fallback-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    if (__DEV__) {
+      console.warn('Could not get installation ID, using fallback');
+    }
   }
+
+  const existingFallback = await AsyncStorage.getItem(FALLBACK_DEVICE_ID_KEY);
+  if (existingFallback) return existingFallback;
+
+  const fallbackId = `fallback-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  await AsyncStorage.setItem(FALLBACK_DEVICE_ID_KEY, fallbackId);
+  return fallbackId;
 };
 
 const useInteractionStore = create(
@@ -24,34 +33,48 @@ const useInteractionStore = create(
       likedIds: [],
       deviceId: null,
       initialized: false,
+      lastError: null,
 
       // Initialize store with device ID and sync from server
       initialize: async () => {
         if (get().initialized) return;
 
-        const deviceId = await getDeviceId();
+        const deviceId = get().deviceId || await getDeviceId();
         set({ deviceId });
 
-        // Sync bookmarks from server
+        // Sync interaction state from server
         try {
-          const response = await axios.get(
-            `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.bookmarks}`,
-            { headers: { 'X-Device-ID': deviceId } }
-          );
+          const headers = { 'X-Device-ID': deviceId };
+          const [bookmarksResponse, likesResponse] = await Promise.all([
+            axios.get(
+              `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.bookmarks}`,
+              { headers }
+            ),
+            axios.get(
+              `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.likes}`,
+              { headers }
+            ),
+          ]);
           set({
-            bookmarkedIds: response.data.page_ids || [],
+            bookmarkedIds: bookmarksResponse.data.page_ids || [],
+            likedIds: likesResponse.data.page_ids || [],
             initialized: true,
           });
         } catch (err) {
-          console.warn('Failed to sync bookmarks from server:', err.message);
+          if (__DEV__) {
+            console.warn('Failed to sync interactions from server:', err.message);
+          }
           set({ initialized: true });
         }
       },
 
       // Toggle bookmark with optimistic update
       toggleBookmark: async (pageId) => {
-        const { deviceId, bookmarkedIds } = get();
-        if (!deviceId) return;
+        const { deviceId, initialized, bookmarkedIds } = get();
+        if (!initialized || !deviceId) {
+          set({ lastError: 'Still preparing your device. Please try again.' });
+          return;
+        }
 
         const isBookmarked = bookmarkedIds.includes(pageId);
 
@@ -71,15 +94,25 @@ const useInteractionStore = create(
           });
         } catch (err) {
           // Revert on failure
-          console.error('Bookmark toggle failed:', err.message);
-          set({ bookmarkedIds });
+          if (__DEV__) {
+            console.error('Bookmark toggle failed:', err.message);
+          }
+          set({
+            bookmarkedIds,
+            lastError: err.code === 'ERR_NETWORK'
+              ? 'No connection. Your bookmark was not saved.'
+              : 'Could not save bookmark. Please try again.',
+          });
         }
       },
 
       // Toggle like with optimistic update
       toggleLike: async (pageId) => {
-        const { deviceId, likedIds } = get();
-        if (!deviceId) return;
+        const { deviceId, initialized, likedIds } = get();
+        if (!initialized || !deviceId) {
+          set({ lastError: 'Still preparing your device. Please try again.' });
+          return;
+        }
 
         const isLiked = likedIds.includes(pageId);
 
@@ -98,8 +131,32 @@ const useInteractionStore = create(
           );
         } catch (err) {
           // Revert on failure
-          console.error('Like toggle failed:', err.message);
-          set({ likedIds });
+          if (__DEV__) {
+            console.error('Like toggle failed:', err.message);
+          }
+          set({
+            likedIds,
+            lastError: err.code === 'ERR_NETWORK'
+              ? 'No connection. Your like was not saved.'
+              : 'Could not save like. Please try again.',
+          });
+        }
+      },
+
+      recordEvent: async (pageId, eventType) => {
+        const { deviceId, initialized } = get();
+        if (!initialized || !deviceId) return;
+
+        try {
+          await axios.post(
+            `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.events}`,
+            { page_id: pageId, event_type: eventType },
+            { headers: { 'X-Device-ID': deviceId } }
+          );
+        } catch (err) {
+          if (__DEV__) {
+            console.warn('Feed event failed:', err.message);
+          }
         }
       },
 
@@ -108,12 +165,15 @@ const useInteractionStore = create(
 
       // Check if a page is liked
       isLiked: (pageId) => get().likedIds.includes(pageId),
+
+      clearLastError: () => set({ lastError: null }),
     }),
     {
       name: 'interaction-storage',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         bookmarkedIds: state.bookmarkedIds,
+        deviceId: state.deviceId,
         likedIds: state.likedIds,
       }),
     }

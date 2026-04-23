@@ -12,9 +12,9 @@ from app.database import get_db
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def engine():
-    """Create test database engine."""
+    """Create an isolated test database engine per test."""
     engine = create_engine(
         TEST_DATABASE_URL,
         connect_args={"check_same_thread": False},
@@ -27,7 +27,7 @@ def engine():
 
 @pytest.fixture
 def db_session(engine):
-    """Create a fresh database session for each test."""
+    """Create a fresh, isolated database session for each test."""
     TestingSessionLocal = sessionmaker(bind=engine)
     session = TestingSessionLocal()
     try:

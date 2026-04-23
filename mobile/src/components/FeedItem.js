@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -13,8 +13,30 @@ import useInteractionStore from '../store/interactionStore';
 const { width, height } = Dimensions.get('window');
 
 export default function FeedItem({ item, navigation }) {
-  const { toggleBookmark, toggleLike, isBookmarked, isLiked } =
+  const {
+    initialized,
+    toggleBookmark,
+    toggleLike,
+    recordEvent,
+    isBookmarked,
+    isLiked,
+    lastError,
+    clearLastError,
+  } =
     useInteractionStore();
+
+  useEffect(() => {
+    if (initialized) {
+      recordEvent(item.id, 'seen');
+    }
+  }, [initialized, item.id, recordEvent]);
+
+  useEffect(() => {
+    if (lastError) {
+      const timer = setTimeout(clearLastError, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [lastError]);
 
   const bookmarked = isBookmarked(item.id);
   const liked = isLiked(item.id);
@@ -46,11 +68,17 @@ export default function FeedItem({ item, navigation }) {
             </View>
           </TouchableOpacity>
 
+          {lastError && (
+            <Text style={styles.errorBanner}>{lastError}</Text>
+          )}
+
           <View style={styles.actions}>
             <TouchableOpacity
               onPress={() => toggleLike(item.id)}
-              style={styles.actionButton}
+              style={[styles.actionButton, !initialized && styles.disabledAction]}
               activeOpacity={0.7}
+              disabled={!initialized}
+              testID="like-button"
             >
               <Ionicons
                 name={liked ? 'heart' : 'heart-outline'}
@@ -61,8 +89,10 @@ export default function FeedItem({ item, navigation }) {
 
             <TouchableOpacity
               onPress={() => toggleBookmark(item.id)}
-              style={styles.actionButton}
+              style={[styles.actionButton, !initialized && styles.disabledAction]}
               activeOpacity={0.7}
+              disabled={!initialized}
+              testID="bookmark-button"
             >
               <Ionicons
                 name={bookmarked ? 'bookmark' : 'bookmark-outline'}
@@ -133,6 +163,12 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 4,
   },
+  errorBanner: {
+    color: '#D32F2F',
+    fontSize: 12,
+    textAlign: 'center',
+    paddingVertical: 4,
+  },
   actions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -140,5 +176,8 @@ const styles = StyleSheet.create({
   actionButton: {
     padding: 8,
     marginLeft: 16,
+  },
+  disabledAction: {
+    opacity: 0.5,
   },
 });

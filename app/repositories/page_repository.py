@@ -1,8 +1,9 @@
 from typing import List, Optional, Tuple
 
+from sqlalchemy import Integer, and_, cast, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import Page, Book
+from app.models import Book, Bookmark, FeedEvent, Like, Page
 
 
 class PageRepository:
@@ -15,35 +16,86 @@ class PageRepository:
         self,
         vibe_threshold: float,
         limit: int,
-        cursor: Optional[int] = None,
+        cursor: Optional[Tuple[int, int, int]] = None,
         exclude_ids: Optional[List[int]] = None,
-    ) -> Tuple[List[Tuple[Page, Book]], Optional[int]]:
+        device_id: Optional[str] = None,
+    ) -> Tuple[List[Tuple[Page, Book]], Optional[Tuple[int, int, int]]]:
         """
         Fetch pages for feed with cursor-based pagination.
 
         Args:
             vibe_threshold: Minimum vibe score to include
             limit: Maximum number of items to return
-            cursor: ID to start after (for pagination)
+            cursor: (interaction_score, vibe_bucket, page_id) tuple
             exclude_ids: Page IDs to exclude from results
+            device_id: Optional device ID for server-side repeat suppression
 
         Returns:
-            Tuple of (list of (Page, Book) tuples, next_cursor or None)
+            Tuple of (list of (Page, Book) tuples, next_cursor tuple or None)
         """
+        likes_subquery = (
+            self.db.query(
+                Like.page_id.label("page_id"),
+                func.count(Like.id).label("like_count"),
+            )
+            .group_by(Like.page_id)
+            .subquery()
+        )
+        bookmarks_subquery = (
+            self.db.query(
+                Bookmark.page_id.label("page_id"),
+                func.count(Bookmark.id).label("bookmark_count"),
+            )
+            .group_by(Bookmark.page_id)
+            .subquery()
+        )
+
+        like_count = func.coalesce(likes_subquery.c.like_count, 0)
+        bookmark_count = func.coalesce(bookmarks_subquery.c.bookmark_count, 0)
+        interaction_score = (like_count * 2 + bookmark_count * 3).label(
+            "interaction_score"
+        )
+        vibe_bucket = cast(Page.vibe_score * 1000, Integer).label("vibe_bucket")
+
         query = (
-            self.db.query(Page, Book)
+            self.db.query(Page, Book, interaction_score, vibe_bucket)
             .join(Book)
+            .outerjoin(likes_subquery, likes_subquery.c.page_id == Page.id)
+            .outerjoin(bookmarks_subquery, bookmarks_subquery.c.page_id == Page.id)
             .filter(Page.vibe_score > vibe_threshold)
         )
 
         if cursor is not None:
-            query = query.filter(Page.id > cursor)
+            cursor_score, cursor_vibe_bucket, cursor_page_id = cursor
+            query = query.filter(
+                or_(
+                    interaction_score < cursor_score,
+                    and_(
+                        interaction_score == cursor_score,
+                        vibe_bucket < cursor_vibe_bucket,
+                    ),
+                    and_(
+                        interaction_score == cursor_score,
+                        vibe_bucket == cursor_vibe_bucket,
+                        Page.id > cursor_page_id,
+                    ),
+                )
+            )
 
         if exclude_ids:
             query = query.filter(Page.id.notin_(exclude_ids))
 
-        # Order by ID for consistent cursor-based pagination
-        query = query.order_by(Page.id).limit(limit + 1)
+        if device_id:
+            hidden_events = select(FeedEvent.page_id).where(
+                FeedEvent.device_id == device_id,
+                FeedEvent.event_type.in_(["seen", "skipped"]),
+            )
+            query = query.filter(Page.id.notin_(hidden_events))
+
+        # Deterministic ranking: engagement first, then vibe quality, then stable ID tie-break.
+        query = query.order_by(
+            interaction_score.desc(), vibe_bucket.desc(), Page.id
+        ).limit(limit + 1)
         results = query.all()
 
         # Check if there are more results
@@ -51,9 +103,13 @@ class PageRepository:
         pages = results[:limit]
 
         # Get next cursor
-        next_cursor = pages[-1][0].id if pages and has_more else None
+        if pages and has_more:
+            last_page, _, last_score, last_vibe_bucket = pages[-1]
+            next_cursor = (int(last_score), int(last_vibe_bucket), last_page.id)
+        else:
+            next_cursor = None
 
-        return pages, next_cursor
+        return [(page, book) for page, book, _, _ in pages], next_cursor
 
     def get_page_by_id(self, page_id: int) -> Optional[Page]:
         """Get a single page by ID."""

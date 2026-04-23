@@ -65,3 +65,22 @@ class Like(Base):
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
 
     page: Mapped["Page"] = relationship()
+
+
+class FeedEvent(Base):
+    """Device-scoped feed event used for repeat suppression and analytics."""
+
+    __tablename__ = "feed_events"
+    __table_args__ = (
+        UniqueConstraint(
+            "device_id", "page_id", "event_type", name="uix_device_page_event"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    device_id: Mapped[str] = mapped_column(index=True)
+    page_id: Mapped[int] = mapped_column(ForeignKey("pages.id"), index=True)
+    event_type: Mapped[str] = mapped_column(index=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+
+    page: Mapped["Page"] = relationship()

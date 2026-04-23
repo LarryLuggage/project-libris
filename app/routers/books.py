@@ -1,6 +1,5 @@
 """Book detail and pages endpoints."""
 
-from typing import Optional
 from urllib.parse import quote_plus
 
 from fastapi import APIRouter, Depends, HTTPException, Query

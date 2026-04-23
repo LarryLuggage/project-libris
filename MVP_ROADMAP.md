@@ -15,26 +15,27 @@ Book lovers who want to discover new literature through beautiful, swipeable exc
 ### 1. Content Pipeline (Priority: Critical)
 **Goal:** Build a rich library of high-quality literary excerpts
 
-- [ ] Gutenberg ingestion service - auto-fetch and process public domain books
-- [ ] Content chunking algorithm - split books into "scroll-worthy" segments
-- [ ] Vibe scoring improvements - better sentiment analysis for quality filtering
-- [ ] Cover image fetching and caching
+- [x] Gutenberg ingestion service - auto-fetch and process public domain books
+- [x] Content chunking algorithm - split books into "scroll-worthy" segments
+- [x] Vibe scoring improvements - better sentiment analysis for quality filtering
+- [x] Cover image URL fetching
+- [ ] Cover image caching
 - [ ] Target: 1,000+ excerpts from 100+ books at launch
 
 ### 2. Personalized Feed Algorithm (Priority: Critical)
 **Goal:** Show users content they'll love, not just random pages
 
-- [ ] Track user interactions (likes, bookmarks, time spent, skips)
+- [x] Track user interactions (likes, bookmarks, seen, skipped events)
 - [ ] Build preference model (favorite genres, authors, themes)
 - [ ] Implement collaborative filtering or content-based recommendations
 - [ ] A/B test feed algorithms
-- [ ] "Seen" tracking to prevent repeat content
+- [x] "Seen" tracking to prevent repeat content
 
 ### 3. User Identity (Priority: High)
 **Goal:** Persistent identity without friction
 
-- [ ] Device-based anonymous accounts (current approach - enhance)
-- [ ] Sync bookmarks/likes across sessions
+- [x] Device-based anonymous accounts (current approach - enhance)
+- [x] Sync bookmarks/likes across sessions
 - [ ] Optional email signup for cross-device sync
 - [ ] Data export capability
 
@@ -107,6 +108,16 @@ Book lovers who want to discover new literature through beautiful, swipeable exc
 - [ ] Implement proper loading skeletons
 - [ ] Add offline support / caching
 - [ ] Performance optimization for large feeds
+
+---
+
+## Current MVP Hardening Status
+
+- Backend tests, Ruff, and mypy are expected to pass locally and in CI.
+- Mobile Jest tests cover feed store, interaction store, and key feed UI states.
+- Feed ranking is currently global: engagement score, vibe score, then stable page ID.
+- Server-side seen/skipped events suppress repeat feed items when `X-Device-ID` is sent.
+- Next product tranche: onboarding preferences, lightweight personalization, sharing, and offline cache polish.
 
 ---
 

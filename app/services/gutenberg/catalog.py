@@ -45,10 +45,8 @@ class BookCatalog:
         {"gutenberg_id": 74, "title": "The Adventures of Tom Sawyer", "author": "Mark Twain"},
         {"gutenberg_id": 76, "title": "Adventures of Huckleberry Finn", "author": "Mark Twain"},
         {"gutenberg_id": 1322, "title": "Leaves of Grass", "author": "Walt Whitman"},
-        {"gutenberg_id": 2852, "title": "The Scarlet Letter", "author": "Nathaniel Hawthorne"},
         {"gutenberg_id": 25344, "title": "The Scarlet Letter", "author": "Nathaniel Hawthorne"},
         {"gutenberg_id": 514, "title": "Little Women", "author": "Louisa May Alcott"},
-        {"gutenberg_id": 76, "title": "The Call of the Wild", "author": "Jack London"},
         {"gutenberg_id": 215, "title": "The Call of the Wild", "author": "Jack London"},
         {"gutenberg_id": 910, "title": "White Fang", "author": "Jack London"},
         # Sherlock Holmes & Mystery
@@ -78,7 +76,6 @@ class BookCatalog:
         {"gutenberg_id": 1184, "title": "The Count of Monte Cristo", "author": "Alexandre Dumas"},
         {"gutenberg_id": 1259, "title": "The Three Musketeers", "author": "Alexandre Dumas"},
         {"gutenberg_id": 1257, "title": "The Man in the Iron Mask", "author": "Alexandre Dumas"},
-        {"gutenberg_id": 2097, "title": "Twenty Years After", "author": "Alexandre Dumas"},
         {"gutenberg_id": 2650, "title": "Madame Bovary", "author": "Gustave Flaubert"},
         # Children's Classics
         {"gutenberg_id": 11, "title": "Alice's Adventures in Wonderland", "author": "Lewis Carroll"},
@@ -153,13 +150,27 @@ class BookCatalog:
 
     def __init__(self):
         """Initialize the catalog."""
-        # Remove duplicates by gutenberg_id
-        seen = set()
+        # Remove duplicates by gutenberg_id.
+        # If an ID appears with conflicting metadata, fail fast.
+        seen: dict[int, Dict] = {}
         self._books = []
         for book in self.CURATED_CLASSICS:
-            if book["gutenberg_id"] not in seen:
-                seen.add(book["gutenberg_id"])
+            gid = book["gutenberg_id"]
+            existing = seen.get(gid)
+            if existing is None:
+                seen[gid] = book
                 self._books.append(book)
+                continue
+
+            if (
+                existing["title"] != book["title"]
+                or existing["author"] != book["author"]
+            ):
+                raise ValueError(
+                    f"Conflicting metadata for Gutenberg ID {gid}: "
+                    f"'{existing['title']}' by {existing['author']} vs "
+                    f"'{book['title']}' by {book['author']}"
+                )
 
     def get_curated_books(self, limit: Optional[int] = None) -> List[Dict]:
         """

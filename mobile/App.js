@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import useInteractionStore from './src/store/interactionStore';
 import FeedScreen from './src/screens/FeedScreen';
 import BookDetailScreen from './src/screens/BookDetailScreen';
@@ -16,6 +17,7 @@ export default function App() {
   }, [initialize]);
 
   return (
+    <SafeAreaProvider>
     <NavigationContainer>
       <Stack.Navigator
         screenOptions={{
@@ -42,5 +44,6 @@ export default function App() {
       </Stack.Navigator>
       <StatusBar style="light" />
     </NavigationContainer>
+    </SafeAreaProvider>
   );
 }

@@ -21,6 +21,7 @@ export default function BookDetailScreen({ route, navigation }) {
   const [book, setBook] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [coverError, setCoverError] = useState(false);
 
   useEffect(() => {
     fetchBookDetail();
@@ -71,11 +72,12 @@ export default function BookDetailScreen({ route, navigation }) {
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header with cover */}
       <View style={styles.header}>
-        {book.cover_url ? (
+        {book.cover_url && !coverError ? (
           <Image
             source={{ uri: book.cover_url }}
             style={styles.coverImage}
             resizeMode="contain"
+            onError={() => setCoverError(true)}
           />
         ) : (
           <View style={[styles.coverImage, styles.placeholderCover]}>

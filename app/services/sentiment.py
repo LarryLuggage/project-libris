@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Type
 
 from textblob import TextBlob
 
@@ -135,7 +136,7 @@ def get_analyzer(analyzer_type: str = "literary") -> SentimentAnalyzer:
     Returns:
         SentimentAnalyzer instance
     """
-    analyzers = {
+    analyzers: dict[str, Type[SentimentAnalyzer]] = {
         "textblob": TextBlobAnalyzer,
         "hybrid": HybridAnalyzer,
         "literary": LiteraryAnalyzer,
