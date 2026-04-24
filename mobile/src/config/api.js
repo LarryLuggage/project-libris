@@ -7,6 +7,9 @@ const getApiBaseUrl = () => {
   if (envUrl) return envUrl;
 
   // Platform-specific defaults for development
+  if (Platform.OS === 'web') {
+    return 'http://127.0.0.1:8000';
+  }
   if (Platform.OS === 'ios' && !Constants.isDevice) {
     // iOS Simulator can use localhost directly
     return 'http://127.0.0.1:8000';

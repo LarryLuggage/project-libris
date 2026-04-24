@@ -49,7 +49,7 @@ export default function Feed() {
   if (items.length === 0 && loading) {
     return (
       <View style={styles.center} testID="loading-indicator">
-        <ActivityIndicator size="large" color="#000" />
+        <ActivityIndicator size="large" color="#FFF" />
       </View>
     );
   }
