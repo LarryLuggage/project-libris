@@ -48,6 +48,8 @@ class FeedService:
         cursor: Optional[str] = None,
         exclude_ids: Optional[List[int]] = None,
         device_id: Optional[str] = None,
+        preferred_genres: Optional[List[str]] = None,
+        preferred_vibes: Optional[List[str]] = None,
     ) -> FeedResponse:
         """
         Get paginated feed of high-vibe pages.
@@ -56,6 +58,8 @@ class FeedService:
             cursor: Pagination cursor (page ID to start after)
             exclude_ids: Page IDs to exclude from results
             device_id: Optional device ID for server-side repeat suppression
+            preferred_genres: Optional list of user's preferred genres
+            preferred_vibes: Optional list of user's preferred vibes
 
         Returns:
             FeedResponse with items and pagination info
@@ -68,7 +72,10 @@ class FeedService:
             cursor=decoded_cursor,
             exclude_ids=exclude_ids,
             device_id=device_id,
+            preferred_genres=preferred_genres,
+            preferred_vibes=preferred_vibes,
         )
+
 
         items = [
             FeedItem(

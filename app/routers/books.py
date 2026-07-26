@@ -8,14 +8,19 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
-from app.models import Book, Page
+from app.models import Book, Page, User
 from app.schemas.book import (
     BookDetail,
     BookPagesResponse,
     BookSummary,
     PageDetail,
     PageSummary,
+    CustomBookCreate,
+    CustomBookResponse,
 )
+from app.services.ingest import chunk_text, analyze_vibe
+from app.routers.interactions import enforce_device_rate_limit
+from app.routers.auth import get_current_user
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -32,10 +37,67 @@ def _build_external_links(book: Book) -> dict:
     """Build external links for a book."""
     search_query = quote_plus(f"{book.title} {book.author}")
     return {
-        "gutenberg_url": f"https://www.gutenberg.org/ebooks/{book.gutenberg_id}",
+        "gutenberg_url": f"https://www.gutenberg.org/ebooks/{book.gutenberg_id}" if book.gutenberg_id is not None else None,
         "amazon_search_url": f"https://www.amazon.com/s?k={search_query}",
         "goodreads_search_url": f"https://www.goodreads.com/search?q={search_query}",
     }
+
+
+@router.post("/custom", response_model=CustomBookResponse, status_code=201)
+def create_custom_book(
+    payload: CustomBookCreate,
+    current_user: User = Depends(get_current_user),
+    device_id: str = Depends(enforce_device_rate_limit),
+    db: Session = Depends(get_db),
+) -> CustomBookResponse:
+    """
+    Upload a custom book and automatically split it into vibe-scored pages.
+    """
+    # Chunk the text
+    chunks = chunk_text(payload.content_text)
+    if not chunks:
+        raise HTTPException(
+            status_code=400,
+            detail="No valid pages could be chunked from the text. Make sure paragraphs are between 50 and 200 words."
+        )
+
+    # Create the book first
+    book = Book(
+        title=payload.title,
+        author=payload.author,
+        cover_url=payload.cover_url,
+        gutenberg_id=None,
+        is_user_uploaded=True,
+        creator_device_id=device_id
+    )
+    db.add(book)
+    db.flush()  # to get book.id
+
+    # Create pages
+    pages_created = 0
+    for idx, chunk in enumerate(chunks):
+        vibe = analyze_vibe(chunk)
+        page = Page(
+            book_id=book.id,
+            page_number=idx + 1,
+            content_text=chunk,
+            vibe_score=vibe
+        )
+        db.add(page)
+        pages_created += 1
+
+    db.commit()
+    db.refresh(book)
+
+    return CustomBookResponse(
+        id=book.id,
+        title=book.title,
+        author=book.author,
+        cover_url=book.cover_url,
+        is_user_uploaded=book.is_user_uploaded,
+        creator_device_id=book.creator_device_id,
+        pages_count=pages_created
+    )
 
 
 @router.get("/{book_id}", response_model=BookDetail)
@@ -99,6 +161,8 @@ def get_book_detail(
         gutenberg_url=links["gutenberg_url"],
         amazon_search_url=links["amazon_search_url"],
         goodreads_search_url=links["goodreads_search_url"],
+        is_user_uploaded=book.is_user_uploaded,
+        creator_device_id=book.creator_device_id,
         top_excerpts=top_excerpts,
     )
 
@@ -185,6 +249,8 @@ def list_books(
             cover_url=book.cover_url,
             page_count=page_count or 0,
             avg_vibe_score=round(avg_score or 0, 3),
+            is_user_uploaded=book.is_user_uploaded,
+            creator_device_id=book.creator_device_id,
         )
         for book, page_count, avg_score in results
     ]

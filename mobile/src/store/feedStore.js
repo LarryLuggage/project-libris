@@ -4,6 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { API_CONFIG } from '../config/api';
 import useInteractionStore from './interactionStore';
+import useOnboardingStore from './onboardingStore';
+
 
 const MAX_SEEN_IDS = 1000;
 
@@ -37,6 +39,16 @@ const useFeedStore = create(
           // Send recently seen IDs to exclude (last 100 for efficiency)
           const seenArray = Array.from(seenIds).slice(-100);
           seenArray.forEach((id) => params.append('exclude', id));
+
+          // Fetch preferences and append to query parameters
+          const onboardingState = useOnboardingStore.getState();
+          const { favoriteGenres, preferredVibes } = onboardingState;
+          if (favoriteGenres && favoriteGenres.length > 0) {
+            favoriteGenres.forEach((genre) => params.append('genres', genre));
+          }
+          if (preferredVibes && preferredVibes.length > 0) {
+            preferredVibes.forEach((vibe) => params.append('vibes', vibe));
+          }
 
           const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.feed}?${params}`;
           if (__DEV__) {

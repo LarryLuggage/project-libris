@@ -51,7 +51,19 @@ Book lovers who want to discover new literature through beautiful, swipeable exc
 
 ## Phase 2: Retention Features (Week 1-2 Post-Launch)
 
-### 5. Social Sharing
+### 5. Story Club Lead Magnet
+**Goal:** Validate a recurring literary membership loop before building native contest mechanics
+
+- [x] Add in-app Story Club pilot waitlist capture
+- [x] Store reader/writer role, genre preferences, and $5/month willingness-to-pay signal
+- [ ] Export invited members from `story_club_leads`
+- [ ] Run four-week concierge pilot with manual submissions, finalist selection, voting, and prize checks
+- [ ] Compare actual participation against willingness-to-pay responses
+- [ ] Decide whether to build native submissions, anonymous finalist voting, and paid founding membership
+
+See `docs/story_club_pilot.md` for operating model, success criteria, and legal posture.
+
+### 6. Social Sharing
 **Goal:** Viral growth through beautiful shareable content
 
 - [ ] Generate quote images with book cover background
@@ -59,7 +71,7 @@ Book lovers who want to discover new literature through beautiful, swipeable exc
 - [ ] Deep link back to app from shared content
 - [ ] "Made with LIBRIS" watermark
 
-### 6. Book Discovery Links
+### 7. Book Discovery Links
 **Goal:** Connect excerpts to full reading experience
 
 - [ ] "Read this book" CTA on each excerpt
@@ -67,7 +79,7 @@ Book lovers who want to discover new literature through beautiful, swipeable exc
 - [ ] Link to local library (via Libby/Overdrive API)
 - [ ] Amazon affiliate links (monetization opportunity)
 
-### 7. Daily Engagement
+### 8. Daily Engagement
 **Goal:** Build daily habit
 
 - [ ] Push notification: "Your daily literary moment"
@@ -79,22 +91,22 @@ Book lovers who want to discover new literature through beautiful, swipeable exc
 
 ## Phase 3: Community & UGC (Future)
 
-### 8. User-Uploaded Quotes
+### 9. User-Uploaded Quotes
 - Quote submission with source attribution
 - Moderation queue
 - Copyright considerations (fair use guidelines)
 
-### 9. Book Reviews
+### 10. Book Reviews
 - Full book review system
 - Rating aggregation
 - Review excerpts in feed
 
-### 10. Social Features
+### 11. Social Features
 - Follow other users
 - See friends' bookmarks/likes
 - Curated collections by users
 
-### 11. Audio Experience
+### 12. Audio Experience
 - Text-to-speech narration
 - Background ambient audio
 - Audiobook preview integration

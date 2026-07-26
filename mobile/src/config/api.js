@@ -2,14 +2,15 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 const getApiBaseUrl = () => {
-  // Allow override from environment/config
-  const envUrl = Constants.expoConfig?.extra?.apiBaseUrl;
-  if (envUrl) return envUrl;
-
-  // Platform-specific defaults for development
+  // Platform-specific defaults for development (Web has priority)
   if (Platform.OS === 'web') {
     return 'http://127.0.0.1:8000';
   }
+
+  // Allow override from environment/config
+  const envUrl = Constants.expoConfig?.extra?.apiBaseUrl;
+  if (envUrl && typeof envUrl === 'string') return envUrl;
+
   if (Platform.OS === 'ios' && !Constants.isDevice) {
     // iOS Simulator can use localhost directly
     return 'http://127.0.0.1:8000';
@@ -20,7 +21,7 @@ const getApiBaseUrl = () => {
 
   // Physical device - try to detect Expo host
   const debuggerHost = Constants.expoConfig?.hostUri;
-  if (debuggerHost) {
+  if (debuggerHost && typeof debuggerHost === 'string') {
     const localhost = debuggerHost.split(':')[0];
     return `http://${localhost}:8000`;
   }
@@ -38,6 +39,10 @@ export const API_CONFIG = {
     bookmarks: '/api/v1/interactions/bookmarks',
     events: '/api/v1/interactions/events',
     likes: '/api/v1/interactions/likes',
+    comments: '/api/v1/comments',
+    reviews: '/api/v1/reviews',
+    upload: '/api/v1/books/custom',
+    storyClubWaitlist: '/api/v1/story-club/waitlist',
   },
 };
 

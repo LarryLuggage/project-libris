@@ -1,0 +1,58 @@
+export const THEMES = {
+  cream: {
+    background: '#FDFBF7',
+    cardBg: '#FFFFFF',
+    text: '#2C1A0F',
+    textSecondary: '#5C4033',
+    primary: '#8B4513',
+    border: '#EAE3D2',
+    error: '#D32F2F',
+    iconActive: '#E91E63',
+    iconBookmark: '#FFD700',
+    iconInactive: '#A08060',
+    isDark: false,
+  },
+  obsidian: {
+    background: '#121212',
+    cardBg: '#1E1E1E',
+    text: '#E0E0E0',
+    textSecondary: '#A0A0A0',
+    primary: '#94A3B8',
+    border: '#2E2E2E',
+    error: '#EF4444',
+    iconActive: '#EC4899',
+    iconBookmark: '#FBBF24',
+    iconInactive: '#666666',
+    isDark: true,
+  },
+  midnight: {
+    background: '#0F172A',
+    cardBg: '#1E293B',
+    text: '#F1F5F9',
+    textSecondary: '#94A3B8',
+    primary: '#38BDF8',
+    border: '#334155',
+    error: '#F87171',
+    iconActive: '#F43F5E',
+    iconBookmark: '#F59E0B',
+    iconInactive: '#475569',
+    isDark: true,
+  },
+  emerald: {
+    background: '#0A1F1C',
+    cardBg: '#112F2B',
+    text: '#E8F5E9',
+    textSecondary: '#A5D6A7',
+    primary: '#A7F3D0',
+    border: '#1A3F3A',
+    error: '#F87171',
+    iconActive: '#EC4899',
+    iconBookmark: '#F59E0B',
+    iconInactive: '#2E5A53',
+    isDark: true,
+  },
+};
+
+export const getTheme = (themeName) => {
+  return THEMES[themeName] || THEMES.cream;
+};

@@ -23,6 +23,13 @@ const resetStores = () => {
     initialized: true,
     lastError: null,
   });
+  const useOnboardingStore = require('./onboardingStore').default;
+  useOnboardingStore.setState({
+    favoriteGenres: [],
+    preferredVibes: [],
+    onboardingCompleted: false,
+    selectedTheme: 'cream',
+  });
 };
 
 describe('feedStore', () => {
@@ -92,5 +99,40 @@ describe('feedStore', () => {
 
     expect(useFeedStore.getState().items).toEqual([{ id: 11, title: 'New' }]);
     jest.useRealTimers();
+  });
+
+  it('appends favoriteGenres and preferredVibes as query parameters when available', async () => {
+    const useOnboardingStore = require('./onboardingStore').default;
+    useOnboardingStore.setState({
+      favoriteGenres: ['sci-fi', 'mystery'],
+      preferredVibes: ['calming', 'dark'],
+    });
+
+    axios.get.mockResolvedValueOnce({
+      data: {
+        items: [],
+        next_cursor: null,
+        has_more: false,
+      },
+    });
+
+    await useFeedStore.getState().fetchFeed();
+
+    expect(axios.get).toHaveBeenCalledWith(
+      expect.stringMatching(/genres=sci-fi/),
+      expect.anything()
+    );
+    expect(axios.get).toHaveBeenCalledWith(
+      expect.stringMatching(/genres=mystery/),
+      expect.anything()
+    );
+    expect(axios.get).toHaveBeenCalledWith(
+      expect.stringMatching(/vibes=calming/),
+      expect.anything()
+    );
+    expect(axios.get).toHaveBeenCalledWith(
+      expect.stringMatching(/vibes=dark/),
+      expect.anything()
+    );
   });
 });

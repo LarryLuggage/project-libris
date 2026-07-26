@@ -261,6 +261,40 @@ class TestFeedEndpoint:
         returned_ids = {item["id"] for item in response.json()["items"]}
         assert page.id in returned_ids
 
+    def test_feed_personalization_boost(self, client, db_session):
+        """Feed should rank pages higher if they match preferred genres/vibes."""
+        # Arrange
+        book_poetry = BookFactory.create(session=db_session, genre="Poetry")
+        book_fiction = BookFactory.create(session=db_session, genre="Fiction")
+        book_philosophy = BookFactory.create(session=db_session, genre="Philosophy")
+
+        # Page A: Poetry + vibe 0.8 (romantic: 0.7-1.0) -> Boost = 50 (genre) + 50 (vibe) = 100
+        page_a = PageFactory.create(session=db_session, book=book_poetry, vibe_score=0.8)
+        # Page B: Fiction + vibe 0.8 (romantic: 0.7-1.0) -> Boost = 0 (genre) + 50 (vibe) = 50
+        page_b = PageFactory.create(session=db_session, book=book_fiction, vibe_score=0.8)
+        # Page C: Philosophy + vibe 0.65 (adventurous/thoughtful) -> Boost = 0 (genre) + 0 (vibe since we only prefer romantic) = 0
+        page_c = PageFactory.create(session=db_session, book=book_philosophy, vibe_score=0.65)
+
+
+        db_session.commit()
+
+        # Act
+        response = client.get(
+            "/api/v1/feed",
+            params={
+                "preferred_genres": ["Poetry"],
+                "preferred_vibes": ["romantic"]
+            }
+        )
+
+        # Assert
+        assert response.status_code == 200
+        items = response.json()["items"]
+        ids = [item["id"] for item in items]
+        
+        # Order should be Page A (boost 100), Page B (boost 50), Page C (boost 0)
+        assert ids == [page_a.id, page_b.id, page_c.id]
+
 
 class TestHealthEndpoint:
     """Tests for health check endpoint."""
