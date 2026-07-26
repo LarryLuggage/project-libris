@@ -20,6 +20,13 @@ class Settings(BaseSettings):
     # Sentiment analysis
     sentiment_analyzer: Literal["textblob", "hybrid", "literary"] = "literary"
 
+    # CORS
+    cors_origins: list[str] = [
+        "http://localhost:19006",
+        "http://localhost:8081",
+        "http://127.0.0.1:19006",
+    ]
+
     # Gutenberg ingestion settings
     gutenberg_rate_limit: float = 1.0  # Seconds between requests
     gutenberg_timeout: int = 30  # Request timeout in seconds

@@ -13,6 +13,8 @@ class BookFactory(factory.Factory):
     title = factory.Faker("sentence", nb_words=4)
     author = factory.Faker("name")
     cover_url = factory.Faker("image_url")
+    genre = None
+
 
     @classmethod
     def create(cls, session=None, **kwargs):

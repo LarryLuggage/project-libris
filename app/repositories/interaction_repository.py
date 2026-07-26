@@ -1,9 +1,10 @@
+from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from app.models import Bookmark, Like
+from app.models import Bookmark, FeedEvent, Like
 
 
 class InteractionRepository:
@@ -93,3 +94,33 @@ class InteractionRepository:
         """Get all liked page IDs for a device."""
         likes = self.db.query(Like.page_id).filter(Like.device_id == device_id).all()
         return [like.page_id for like in likes]
+
+    # Feed event operations
+    def record_feed_event(
+        self, device_id: str, page_id: int, event_type: str
+    ) -> FeedEvent:
+        """Record a feed event idempotently for a device/page/type tuple."""
+        event = (
+            self.db.query(FeedEvent)
+            .filter(
+                and_(
+                    FeedEvent.device_id == device_id,
+                    FeedEvent.page_id == page_id,
+                    FeedEvent.event_type == event_type,
+                )
+            )
+            .first()
+        )
+        if event:
+            event.created_at = datetime.utcnow()
+        else:
+            event = FeedEvent(
+                device_id=device_id,
+                page_id=page_id,
+                event_type=event_type,
+            )
+            self.db.add(event)
+
+        self.db.commit()
+        self.db.refresh(event)
+        return event

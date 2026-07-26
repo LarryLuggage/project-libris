@@ -47,7 +47,6 @@ class IngestionResult:
 
     def summary(self) -> str:
         """Generate a human-readable summary."""
-        total_attempted = self.books_processed + self.books_skipped + self.books_failed
         high_vibe_pct = (
             (self.high_vibe_pages / self.pages_created * 100)
             if self.pages_created > 0

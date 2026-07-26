@@ -1,12 +1,15 @@
 import React from 'react';
-import { StyleSheet, SafeAreaView } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Feed from '../components/Feed';
 
 export default function FeedScreen() {
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <Feed />
-    </SafeAreaView>
+    </View>
   );
 }
 

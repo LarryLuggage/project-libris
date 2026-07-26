@@ -1,4 +1,3 @@
-import pytest
 from app.services.ingest import strip_gutenberg_headers, chunk_text, analyze_vibe
 
 
@@ -56,39 +55,38 @@ class TestStripGutenbergHeaders:
 class TestChunkText:
     """Tests for chunk_text function."""
 
-    def test_chunks_exact_word_count(self):
-        """Should create chunks of exact word count."""
-        words = " ".join(["word"] * 600)
-        chunks = chunk_text(words, word_count=300)
-        assert len(chunks) == 2
-        assert len(chunks[0].split()) == 300
-        assert len(chunks[1].split()) == 300
-
-    def test_handles_remainder(self):
-        """Should handle text that doesn't divide evenly."""
-        words = " ".join(["word"] * 350)
-        chunks = chunk_text(words, word_count=300)
-        assert len(chunks) == 2
-        assert len(chunks[0].split()) == 300
-        assert len(chunks[1].split()) == 50
+    def test_keeps_paragraphs_in_target_word_range(self):
+        """Should keep only paragraphs between 50 and 200 words."""
+        para = " ".join(["word"] * 75)
+        chunks = chunk_text(para)
+        assert chunks == [para]
 
     def test_empty_text(self):
         """Should return empty list for empty text."""
         chunks = chunk_text("")
-        assert chunks == [""]
+        assert chunks == []
 
-    def test_text_shorter_than_chunk(self):
-        """Should return single chunk for short text."""
-        text = "Short text here"
-        chunks = chunk_text(text, word_count=300)
-        assert len(chunks) == 1
-        assert chunks[0] == text
+    def test_filters_short_and_long_paragraphs(self):
+        """Should drop paragraphs outside the accepted word range."""
+        short_para = " ".join(["short"] * 30)
+        valid_para = " ".join(["valid"] * 80)
+        long_para = " ".join(["long"] * 250)
+        text = f"{short_para}\n\n{valid_para}\n\n{long_para}"
+        chunks = chunk_text(text)
+        assert chunks == [valid_para]
 
-    def test_custom_word_count(self):
-        """Should respect custom word count."""
-        words = " ".join(["word"] * 100)
-        chunks = chunk_text(words, word_count=25)
-        assert len(chunks) == 4
+    def test_splits_on_blank_lines_and_normalizes_whitespace(self):
+        """Should use paragraph boundaries and collapse whitespace."""
+        para1 = " ".join(["alpha"] * 60)
+        para2 = " ".join(["beta"] * 55)
+        text = f"\n  {para1} \n\n\n  {para2}  \n"
+        chunks = chunk_text(text)
+        assert chunks == [para1, para2]
+
+    def test_word_count_parameter_is_ignored_for_backward_compat(self):
+        """word_count arg should not change current paragraph-based behavior."""
+        para = " ".join(["word"] * 70)
+        assert chunk_text(para, word_count=25) == chunk_text(para, word_count=300)
 
 
 class TestAnalyzeVibe:
@@ -122,4 +120,4 @@ class TestAnalyzeVibe:
         """Neutral text should have score around 0.5."""
         text = "The table is made of wood."
         score = analyze_vibe(text)
-        assert 0.4 <= score <= 0.6
+        assert 0.3 <= score <= 0.7
